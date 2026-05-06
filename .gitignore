@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+
+# Backups (timestamped) — never commit
+*.bak
+*.bak-*
+
+# Local env / OS
+.env
+.env.*
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Project-local: never publish runtime data, even if pulled into the project dir
+joke.md
+joke_source.md
+jokes.db
+*.sqlite
+*.sqlite3
+
+# Local cache
+.cache/
+
+# Node (only generate_arch_doc.js — no need to commit deps)
+node_modules/
+package-lock.json

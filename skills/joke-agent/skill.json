@@ -1,0 +1,7 @@
+{
+  "name": "joke-agent",
+  "version": "0.1.0",
+  "description": "Cantonese / Traditional-Chinese joke fetching agent. Discovers, extracts, deduplicates, classifies, and stores jokes from LIHKG and HKGolden via codex-ollama-bridge, with a human-in-the-loop test mode.",
+  "license": "MIT",
+  "keywords": ["openclaw", "joke", "cantonese", "lihkg", "hkgolden", "codex-ollama-bridge", "agent"]
+}

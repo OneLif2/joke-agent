@@ -15,7 +15,7 @@ from typing import Callable, List, Optional, Tuple
 from . import canonicalize, db as db_mod, extract, fingerprint, tagging
 from .forums import router as forum_router
 from .forums.base import ForumPage
-from .llm import LLMClient
+from .llm import LLMClient, LLMQuotaError
 from .writer import Candidate
 
 
@@ -80,6 +80,9 @@ def gather(
         progress(f"  {len(page.posts)} posts; running LLM boundary detection")
         try:
             blocks = extract.extract_jokes(page.posts, llm)
+        except LLMQuotaError as e:
+            progress(f"  ABORT: {e} — stopping crawl to avoid burning more requests")
+            raise
         except Exception as e:
             progress(f"  boundary detection failed: {e}")
             blocks = []
@@ -100,6 +103,9 @@ def gather(
 
             try:
                 tags = tagging.classify(display_text, valid_tags, llm)
+            except LLMQuotaError as e:
+                progress(f"  ABORT: {e} — stopping crawl mid-batch")
+                raise
             except Exception as e:
                 progress(f"  tag classification failed, defaulting to 其他笑話: {e}")
                 tags = ["其他笑話"]

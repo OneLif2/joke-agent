@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .forums.base import Post
-from .llm import LLMClient, LLMError
+from .llm import LLMClient, LLMError, LLMQuotaError
 
 
 @dataclass
@@ -128,10 +128,14 @@ def extract_jokes(
 
     last_reply = ""
     for attempt in range(1, max_attempts + 1):
-        reply = llm.chat([
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
-        ])
+        try:
+            reply = llm.chat([
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ])
+        except LLMQuotaError:
+            # Quota error is fatal — retrying just burns more requests.
+            raise
         last_reply = reply
         if not reply.strip():
             continue  # transient empty — retry
@@ -141,7 +145,6 @@ def extract_jokes(
         except json.JSONDecodeError:
             continue  # malformed — retry once
 
-    # Exhausted retries. Return [] so the pipeline keeps moving.
     snippet = last_reply.strip()[:200] or "(empty)"
     raise RuntimeError(
         f"LLM returned no usable response after {max_attempts} attempts; last reply: {snippet!r}"

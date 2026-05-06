@@ -12,7 +12,26 @@ from . import LLM_BASE_URL, LLM_MODEL
 
 
 class LLMError(RuntimeError):
-    pass
+    """Generic LLM client failure. status_code is set when the underlying
+    HTTP response carried one."""
+
+    def __init__(self, message: str, *, status_code: Optional[int] = None,
+                 body: str = ""):
+        super().__init__(message)
+        self.status_code = status_code
+        self.body = body
+
+
+class LLMQuotaError(LLMError):
+    """429 with usage_limit_reached — retrying is pointless until reset."""
+
+    def __init__(self, message: str, *, resets_at: Optional[int] = None,
+                 resets_in_seconds: Optional[int] = None,
+                 plan_type: Optional[str] = None, body: str = ""):
+        super().__init__(message, status_code=429, body=body)
+        self.resets_at = resets_at
+        self.resets_in_seconds = resets_in_seconds
+        self.plan_type = plan_type
 
 
 class LLMClient:
@@ -71,7 +90,12 @@ class LLMClient:
                 body = json.loads(r.read())
         except urllib.error.HTTPError as e:
             detail = e.read().decode("utf-8", errors="replace")[:500]
-            raise LLMError(f"chat HTTP {e.code}: {detail}") from e
+            # Detect upstream quota exhaustion specifically
+            if e.code == 429 and "usage_limit_reached" in detail:
+                err = self._parse_quota_error(detail)
+                raise err from e
+            raise LLMError(f"chat HTTP {e.code}: {detail}",
+                           status_code=e.code, body=detail) from e
         except urllib.error.URLError as e:
             raise LLMError(f"chat connection error: {e.reason}") from e
 
@@ -82,3 +106,27 @@ class LLMClient:
         if content is None:
             raise LLMError(f"chat returned no content: {body!r}")
         return content
+
+    @staticmethod
+    def _parse_quota_error(detail: str) -> "LLMQuotaError":
+        """Extract resets_at / plan_type from the upstream JSON error body."""
+        try:
+            err = (json.loads(detail) or {}).get("error", {}) or {}
+        except Exception:
+            err = {}
+        resets_at = err.get("resets_at")
+        resets_in = err.get("resets_in_seconds")
+        plan = err.get("plan_type")
+        msg = (err.get("message") or "usage limit reached")
+        if resets_in is not None:
+            mins = resets_in // 60
+            secs = resets_in % 60
+            human = f"{mins}m{secs:02d}s"
+            msg = f"LLM quota exhausted ({plan or 'unknown'} plan) — resets in {human}"
+        return LLMQuotaError(
+            msg,
+            resets_at=resets_at,
+            resets_in_seconds=resets_in,
+            plan_type=plan,
+            body=detail,
+        )

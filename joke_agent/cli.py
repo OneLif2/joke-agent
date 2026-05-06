@@ -26,7 +26,7 @@ from . import sources as sources_mod
 from . import writer as writer_mod
 from .forums import router as forum_router
 from .http_fetch import FetchError
-from .llm import LLMClient, LLMError
+from .llm import LLMClient, LLMError, LLMQuotaError
 from .mode import Mode
 
 
@@ -127,6 +127,19 @@ def cmd_fetch_jokes(args: argparse.Namespace) -> int:
             progress=lambda m: print(f"  [pipeline] {m}"),
             use_cache=not args.no_cache,
         )
+    except LLMQuotaError as e:
+        print(f"\nERROR: {e}", file=sys.stderr)
+        print(
+            "\nOptions while waiting:\n"
+            "  1. Wait for the quota reset, then re-run the same command.\n"
+            "  2. Use the nvidia-ollama-bridge fallback (gemma-4-31b-it):\n"
+            "       python3 -m joke_agent fetch-jokes 5 \\\n"
+            "         --base-url http://127.0.0.1:11545/v1 \\\n"
+            "         --model google/gemma-4-31b-it",
+            file=sys.stderr,
+        )
+        conn.close()
+        return 2
     except (ValueError, RuntimeError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         conn.close()

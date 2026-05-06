@@ -1,7 +1,7 @@
 ---
 name: joke-agent
-version: 0.2.0
-description: Cantonese / Traditional-Chinese joke fetching agent. Auto-picks a forum thread (LIHKG, HKGolden, or Baby Kingdom), extracts jokes via LLM, dedups, classifies tags, presents candidates for review, and atomically saves to jokes.db + markdown. Test mode (review-before-save) is the default safe path.
+version: 0.3.0
+description: Cantonese / Traditional-Chinese joke fetching agent. Auto-picks a forum thread (LIHKG, HKGolden, or Baby Kingdom), extracts jokes via LLM (default google/gemma-4-31b-it via nvidia-ollama-bridge; codex/gpt-5.5 available as fallback), dedups, classifies tags, presents candidates for review, and atomically saves to jokes.db + markdown.
 metadata:
   openclaw:
     emoji: "😆"
@@ -33,8 +33,8 @@ The agent is a Python package at
 - DB: `/home/pi/.openclaw/workspace/state/jokes.db`
 - Markdown export: `/home/pi/.openclaw/workspace/joke.md`
 - Source audit: `/home/pi/.openclaw/workspace/joke_source.md`
-- LLM: `openai-codex/gpt-5.5` via codex-ollama-bridge at `http://127.0.0.1:11540/v1`
-- Fallback LLM: `google/gemma-4-31b-it` via nvidia-ollama-bridge at `http://127.0.0.1:11545/v1`
+- LLM (default): `google/gemma-4-31b-it` via nvidia-ollama-bridge at `http://127.0.0.1:11545/v1` — free, no quota
+- LLM (fallback): `openai-codex/gpt-5.5` via codex-ollama-bridge at `http://127.0.0.1:11540/v1` — subject to plus-plan quota
 - Cache: `~/.cache/joke_agent/<platform>/<sha-prefix>` (24h TTL)
 - Default test-mode target: 5 candidates
 - Default `--max-pages`: 10
@@ -42,11 +42,14 @@ The agent is a Python package at
 ## Required services
 
 ```bash
-# LLM bridge — must be running
-systemctl --user status codex-ollama-bridge
+# Default LLM bridge (gemma) — must be running
+systemctl --user status nvidia-ollama-bridge
 
 # Restart if needed
-systemctl --user restart codex-ollama-bridge
+systemctl --user restart nvidia-ollama-bridge
+
+# Optional fallback bridge (codex) — only needed if the user wants gpt-5.5
+systemctl --user status codex-ollama-bridge
 ```
 
 ## Pre-flight
@@ -58,7 +61,7 @@ python3 -m joke_agent health
 Expects:
 - `db.path: OK`, `db.schema: OK` (legacy `groups` / `joke_sends` warnings are
   out-of-scope per goal.md; ignore unless you've explicitly decided to drop)
-- `bridge.reachable: OK`, `bridge.model: openai-codex/gpt-5.5 advertised`,
+- `bridge.reachable: OK`, `bridge.model: google/gemma-4-31b-it advertised`,
   `bridge.chat: round-trip OK`
 
 ## Run test mode (the safe default)
@@ -186,10 +189,14 @@ unknown is dropped. Empty result defaults to `其他笑話`.
 
 ## Troubleshooting
 
-- **`bridge.reachable: FAIL`** — bridge service is down. Restart with
-  `systemctl --user restart codex-ollama-bridge` and re-run `health`.
-- **`LLMError 401`** — OpenClaw OAuth profile expired. Re-auth in OpenClaw,
-  or set `CODEX_BRIDGE_OAUTH_PROFILE` in `~/.config/codex-ollama-bridge/env`.
+- **`bridge.reachable: FAIL`** — default bridge service is down. Restart with
+  `systemctl --user restart nvidia-ollama-bridge` and re-run `health`. If you've
+  switched to codex via env vars / flags, restart `codex-ollama-bridge` instead.
+- **`LLMQuotaError ... usage_limit_reached`** — codex (gpt-5.5) plus-plan
+  quota hit; only happens when running with the codex fallback. Switch back
+  to the default gemma bridge or wait for `resets_in_seconds`.
+- **`LLMError 401` (codex only)** — OpenClaw OAuth profile expired. Re-auth in
+  OpenClaw, or set `CODEX_BRIDGE_OAUTH_PROFILE` in `~/.config/codex-ollama-bridge/env`.
 - **`boundary detection failed`** — usually transient (bridge returned an
   empty completion). Auto-retried twice; if persistent, check
   `journalctl --user -u codex-ollama-bridge -n 50`.

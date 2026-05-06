@@ -60,10 +60,17 @@ def check_bridge(base_url: str = LLM_BASE_URL, model: str = LLM_MODEL) -> List[C
     try:
         models = client.models()
     except LLMError as e:
+        # Map the URL back to the systemd unit so the hint is accurate
+        if "11545" in base_url:
+            svc = "nvidia-ollama-bridge"
+        elif "11540" in base_url:
+            svc = "codex-ollama-bridge"
+        else:
+            svc = "<your-bridge-service>"
         results.append(CheckResult(
             "bridge.reachable",
             False,
-            f"{base_url} — {e}. Try: systemctl --user restart codex-ollama-bridge",
+            f"{base_url} — {e}. Try: systemctl --user restart {svc}",
         ))
         return results
     results.append(CheckResult("bridge.reachable", True, f"{base_url} returned {len(models)} model(s)"))

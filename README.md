@@ -40,8 +40,9 @@ mode** for review before any DB write.
 |---|---|
 | **Python 3.8+** | runtime |
 | **`requests`** + **`beautifulsoup4`** | forum HTML/JSON fetching |
-| **codex-ollama-bridge** running on `127.0.0.1:11540` | LLM access via OpenClaw OAuth |
-| **`openai-codex/gpt-5.5`** model accessible through the bridge | boundary detection + tagging |
+| **nvidia-ollama-bridge** running on `127.0.0.1:11545` | default LLM access (free, no quota) |
+| **`google/gemma-4-31b-it`** model exposed through the bridge | boundary detection + tagging |
+| **codex-ollama-bridge** on `127.0.0.1:11540` _(optional fallback)_ | higher-quality `openai-codex/gpt-5.5` for tricky pages |
 | **SQLite DB** under your OpenClaw workspace (default: `~/.openclaw/workspace/state/jokes.db`) | persistence |
 
 ### Environment overrides
@@ -54,31 +55,42 @@ Every default is overridable via env var — see [`joke_agent/__init__.py`](joke
 | `JOKE_AGENT_DB` | `<workspace>/state/jokes.db` | SQLite path |
 | `JOKE_AGENT_JOKE_MD` | `<workspace>/joke.md` | export markdown |
 | `JOKE_AGENT_SOURCE_MD` | `<workspace>/joke_source.md` | source audit markdown |
-| `JOKE_AGENT_LLM_BASE_URL` | `http://127.0.0.1:11540/v1` | LLM endpoint |
-| `JOKE_AGENT_LLM_MODEL` | `openai-codex/gpt-5.5` | LLM model id |
-| `JOKE_AGENT_LLM_FALLBACK_BASE_URL` | `http://127.0.0.1:11545/v1` | nvidia bridge fallback |
-| `JOKE_AGENT_LLM_FALLBACK_MODEL` | `google/gemma-4-31b-it` | fallback model id |
+| `JOKE_AGENT_LLM_BASE_URL` | `http://127.0.0.1:11545/v1` | LLM endpoint (nvidia bridge) |
+| `JOKE_AGENT_LLM_MODEL` | `google/gemma-4-31b-it` | LLM model id |
+| `JOKE_AGENT_LLM_FALLBACK_BASE_URL` | `http://127.0.0.1:11540/v1` | codex bridge fallback |
+| `JOKE_AGENT_LLM_FALLBACK_MODEL` | `openai-codex/gpt-5.5` | fallback model id |
 | `JOKE_AGENT_CACHE_DIR` | `~/.cache/joke_agent` | forum-fetch cache root |
 | `JOKE_AGENT_CACHE_TTL` | `86400` | cache TTL in seconds |
 | `JOKE_AGENT_USER_AGENT` | Chrome-on-Android | UA for forum fetches |
 | `JOKE_AGENT_FETCH_DELAY` | `1.5` | seconds between live fetches |
 | `JOKE_AGENT_MODE` | `live` | set to `test` for review-before-save |
 
-The agent gracefully falls back to the **nvidia-ollama-bridge** on port 11545
-(`google/gemma-4-31b-it`) for documentation purposes — not currently auto-used,
-but `LLM_FALLBACK_*` constants are already wired in
-[`joke_agent/__init__.py`](joke_agent/__init__.py).
+If you prefer the higher-quality codex model (`openai-codex/gpt-5.5`),
+override at the command line:
+
+```bash
+python3 -m joke_agent test 5 \
+    --base-url http://127.0.0.1:11540/v1 \
+    --model openai-codex/gpt-5.5
+```
+
+…or set it project-wide:
+
+```bash
+export JOKE_AGENT_LLM_BASE_URL=http://127.0.0.1:11540/v1
+export JOKE_AGENT_LLM_MODEL=openai-codex/gpt-5.5
+```
 
 ```bash
 pip3 install --user requests beautifulsoup4
 ```
 
-The bridge is expected to be running as a systemd user service:
+The default bridge is expected to be running as a systemd user service:
 
 ```bash
-systemctl --user status codex-ollama-bridge
+systemctl --user status nvidia-ollama-bridge
 # if down:
-systemctl --user restart codex-ollama-bridge
+systemctl --user restart nvidia-ollama-bridge
 ```
 
 ---
@@ -119,6 +131,7 @@ The `test` prompt waits for one of:
 | `python3 -m joke_agent chat "<prompt>"` | One-shot LLM call (smoke-test the bridge) |
 | `python3 -m joke_agent sources` | List active `source_threads`; show what `test` will pick |
 | `python3 -m joke_agent fetch <url>` | Fetch one forum page; print posts (no LLM, no DB) |
+| `python3 -m joke_agent fetch-jokes 10 --review` | Explicit-URL test mode |
 | `python3 -m joke_agent fetch-jokes 5 --review --url <url>` | Explicit-URL test mode |
 | `python3 -m joke_agent fetch-jokes 5 --url <url>` | **Live mode** — auto-saves; use only when confident |
 | `python3 -m joke_agent test [N]` | Shortcut: `fetch-jokes N --review` with auto-pick |
@@ -133,12 +146,12 @@ The `test` prompt waits for one of:
 | `--platform lihkg` / `hkgolden` / `babykingdom` | Restrict auto-pick to one platform; ignored when `--url` is given |
 | `--no-cache` | Force a fresh forum fetch (bypasses 24h local cache) |
 | `--max-pages N` | Cap how many pages the pipeline crawls in one run (default 10) |
-| `--base-url <url>` | Override LLM bridge URL |
-| `--model <id>` | Override LLM model (e.g. switch to `openai-codex/gpt-5.4-mini`) |
+| `--base-url <url>` | Override LLM bridge URL (e.g. `http://127.0.0.1:11540/v1` for codex) |
+| `--model <id>` | Override LLM model (e.g. `openai-codex/gpt-5.5` or `openai-codex/gpt-5.4-mini`) |
 
 ```bash
 # only crawl LIHKG threads
-python3 -m joke_agent test --platform lihkg
+python3 -m joke_agent test fetch-jokes 10 --platform lihkg 
 
 # only HKGolden
 python3 -m joke_agent test --platform hkgolden
@@ -274,7 +287,8 @@ Or pass `--no-cache` to a single command.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `health` says `bridge.reachable: FAIL` | Bridge service stopped | `systemctl --user restart codex-ollama-bridge` |
+| `health` says `bridge.reachable: FAIL` | Bridge service stopped | `systemctl --user restart nvidia-ollama-bridge` (default) or `codex-ollama-bridge` if you've switched models |
+| `LLMQuotaError ... usage_limit_reached` (codex only) | Codex plus-plan quota exhausted | Wait for the `resets_in` window OR run with the default gemma model (no quota) |
 | `health` flags `legacy tables still present` | `groups` / `joke_sends` left over | Out of scope; ignore unless you've decided to drop them |
 | `LLMError ... 401` | OpenClaw OAuth profile expired | Re-authenticate in OpenClaw or set `CODEX_BRIDGE_OAUTH_PROFILE` to a live profile |
 | `boundary detection failed: ...` | Transient empty LLM response | Auto-retried twice; if still failing, check `journalctl --user -u codex-ollama-bridge -n 50` |

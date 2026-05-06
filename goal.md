@@ -275,25 +275,25 @@ The agent may add: `last_fetch_run`, `last_tag_pass`, `total_jokes_added`.
 
 ## 6. LLM Configuration & Roles
 
-### 6.1 LLM Access — codex-ollama-bridge (OpenAI protocol)
+### 6.1 LLM Access — nvidia-ollama-bridge (OpenAI protocol, default)
 
-The agent reaches the LLM through the locally-running **codex-ollama-bridge**, which exposes OpenClaw's OAuth-authenticated `openai-codex` provider as a standard OpenAI-compatible HTTP endpoint. No API key needed — the bridge reuses the OpenClaw OAuth profile (`openai-codex:<your-openclaw-account>`) and refreshes tokens automatically.
+The agent reaches the LLM through the locally-running **nvidia-ollama-bridge**, which proxies NVIDIA NIM as a standard OpenAI-compatible HTTP endpoint. The default model is `google/gemma-4-31b-it` — free, fast, no quota window. The codex-ollama-bridge stays available as a fallback for higher-quality runs (`openai-codex/gpt-5.5` via OpenClaw OAuth).
 
-| Setting | Value |
+| Setting | Value (default) |
 |---|---|
-| Bridge service | `codex-ollama-bridge.service` (user systemd, already running on port 11540) |
-| Base URL | `http://127.0.0.1:11540/v1` |
+| Bridge service | `nvidia-ollama-bridge.service` (user systemd, port 11545) |
+| Base URL | `http://127.0.0.1:11545/v1` |
 | Protocol | OpenAI Chat Completions (`POST /v1/chat/completions`) |
-| Model ID | `openai-codex/gpt-5.5` |
+| Model ID | `google/gemma-4-31b-it` |
 | API key | Any non-empty string (ignored by the bridge) |
 | Streaming | Supported (`"stream": true` → SSE) |
-| Auth | Inherited from OpenClaw OAuth — auto-refresh, no per-call setup |
+| Auth | Bridge holds an `NVIDIA_API_KEY`; agent supplies no credentials |
+| Fallback | `openai-codex/gpt-5.5` via codex-ollama-bridge on port 11540 (subject to OpenAI Codex plus-plan quota) |
 
-**Why this route (vs OpenClaw's native CLI):**
-- `openclaw capability model run` currently fails for `openai-codex/gpt-5.5` ("No text output returned").
-- The bridge succeeds in ~7–8s with both OpenAI and Ollama protocols.
-- Standard HTTP means the joke agent can use the OpenAI Python SDK directly — no shelling out, no CLI parsing.
-- Swap-friendly: changing `base_url` is the only edit needed if the LLM provider ever changes.
+**Why this route:**
+- No quota cap — gemma calls don't trigger the codex `usage_limit_reached` 429.
+- Standard HTTP means the joke agent uses the OpenAI Python SDK directly — no shelling out, no CLI parsing.
+- Swap-friendly: changing `base_url` is the only edit needed to flip between bridges.
 
 **Python usage (reference for the joke agent):**
 
@@ -301,12 +301,12 @@ The agent reaches the LLM through the locally-running **codex-ollama-bridge**, w
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://127.0.0.1:11540/v1",
-    api_key="codex-bridge",  # any non-empty string
+    base_url="http://127.0.0.1:11545/v1",
+    api_key="nvidia-bridge",  # any non-empty string
 )
 
 resp = client.chat.completions.create(
-    model="openai-codex/gpt-5.5",
+    model="google/gemma-4-31b-it",
     messages=[
         {"role": "system", "content": "You are a Cantonese joke classifier..."},
         {"role": "user", "content": prompt_text},
@@ -320,17 +320,27 @@ print(resp.choices[0].message.content)
 
 ```bash
 python3 -c "import urllib.request,json; \
-  req=urllib.request.Request('http://127.0.0.1:11540/v1/models'); \
+  req=urllib.request.Request('http://127.0.0.1:11545/v1/models'); \
   print(json.loads(urllib.request.urlopen(req,timeout=5).read())['data'][0]['id'])"
 ```
 
 If the bridge is down, restart it:
 ```bash
-systemctl --user restart codex-ollama-bridge
-journalctl --user -u codex-ollama-bridge -n 20
+systemctl --user restart nvidia-ollama-bridge
+journalctl --user -u nvidia-ollama-bridge -n 20
 ```
 
-**Fallback option:** the nvidia-ollama-bridge (port 11545, `google/gemma-4-31b-it`, also already running) can serve as a backup if the codex bridge auth expires or the upstream is unavailable. Same OpenAI protocol — only the URL and model id change.
+**Switching to the codex fallback** when you want higher-quality output:
+
+```bash
+python3 -m joke_agent test 5 \
+    --base-url http://127.0.0.1:11540/v1 \
+    --model openai-codex/gpt-5.5
+
+# or set project-wide:
+export JOKE_AGENT_LLM_BASE_URL=http://127.0.0.1:11540/v1
+export JOKE_AGENT_LLM_MODEL=openai-codex/gpt-5.5
+```
 
 ### 6.2 Role: Joke Boundary Detection
 

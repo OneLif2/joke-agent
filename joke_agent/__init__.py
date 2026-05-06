@@ -21,11 +21,13 @@ JOKE_MD_PATH = _env("JOKE_AGENT_JOKE_MD", os.path.join(_OPENCLAW_WORKSPACE, "jok
 JOKE_SOURCE_MD_PATH = _env("JOKE_AGENT_SOURCE_MD",
                            os.path.join(_OPENCLAW_WORKSPACE, "joke_source.md"))
 
-# LLM via codex-ollama-bridge (override with JOKE_AGENT_LLM_*)
-LLM_BASE_URL = _env("JOKE_AGENT_LLM_BASE_URL", "http://127.0.0.1:11540/v1")
-LLM_MODEL = _env("JOKE_AGENT_LLM_MODEL", "openai-codex/gpt-5.5")
-LLM_FALLBACK_BASE_URL = _env("JOKE_AGENT_LLM_FALLBACK_BASE_URL", "http://127.0.0.1:11545/v1")
-LLM_FALLBACK_MODEL = _env("JOKE_AGENT_LLM_FALLBACK_MODEL", "google/gemma-4-31b-it")
+# LLM defaults to gemma-4-31b-it via nvidia-ollama-bridge (no quota cap, fast).
+# Codex/gpt-5.5 stays available as a fallback for higher-quality runs.
+# Override via JOKE_AGENT_LLM_* env vars.
+LLM_BASE_URL = _env("JOKE_AGENT_LLM_BASE_URL", "http://127.0.0.1:11545/v1")
+LLM_MODEL = _env("JOKE_AGENT_LLM_MODEL", "google/gemma-4-31b-it")
+LLM_FALLBACK_BASE_URL = _env("JOKE_AGENT_LLM_FALLBACK_BASE_URL", "http://127.0.0.1:11540/v1")
+LLM_FALLBACK_MODEL = _env("JOKE_AGENT_LLM_FALLBACK_MODEL", "openai-codex/gpt-5.5")
 
 CACHE_DIR = _env("JOKE_AGENT_CACHE_DIR", os.path.expanduser("~/.cache/joke_agent"))
 CACHE_TTL_SECONDS = int(_env("JOKE_AGENT_CACHE_TTL", str(24 * 3600)))

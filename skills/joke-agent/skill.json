@@ -1,7 +1,7 @@
 {
   "name": "joke-agent",
-  "version": "0.2.0",
-  "description": "Cantonese / Traditional-Chinese joke fetching agent. Discovers, extracts, deduplicates, classifies, and stores jokes from LIHKG, HKGolden and Baby Kingdom via codex-ollama-bridge, with a human-in-the-loop test mode.",
+  "version": "0.3.0",
+  "description": "Cantonese / Traditional-Chinese joke fetching agent. Discovers, extracts, deduplicates, classifies, and stores jokes from LIHKG, HKGolden and Baby Kingdom. Default LLM: google/gemma-4-31b-it via nvidia-ollama-bridge; codex/gpt-5.5 available as fallback. Human-in-the-loop test mode for review-before-save.",
   "license": "MIT",
   "keywords": ["openclaw", "joke", "cantonese", "lihkg", "hkgolden", "babykingdom", "discuz", "codex-ollama-bridge", "agent"]
 }

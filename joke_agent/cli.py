@@ -129,13 +129,14 @@ def cmd_fetch_jokes(args: argparse.Namespace) -> int:
         )
     except LLMQuotaError as e:
         print(f"\nERROR: {e}", file=sys.stderr)
+        from . import LLM_FALLBACK_BASE_URL, LLM_FALLBACK_MODEL
         print(
             "\nOptions while waiting:\n"
             "  1. Wait for the quota reset, then re-run the same command.\n"
-            "  2. Use the nvidia-ollama-bridge fallback (gemma-4-31b-it):\n"
-            "       python3 -m joke_agent fetch-jokes 5 \\\n"
-            "         --base-url http://127.0.0.1:11545/v1 \\\n"
-            "         --model google/gemma-4-31b-it",
+            "  2. Try the configured fallback model:\n"
+            f"       python3 -m joke_agent fetch-jokes 5 \\\n"
+            f"         --base-url {LLM_FALLBACK_BASE_URL} \\\n"
+            f"         --model {LLM_FALLBACK_MODEL}",
             file=sys.stderr,
         )
         conn.close()

@@ -167,4 +167,6 @@ def _base_thread_url(platform: str, thread_id: str) -> str:
         return f"https://lihkg.com/thread/{thread_id}"
     if platform == "hkgolden":
         return f"https://md.hkgolden.com/view.aspx?message={thread_id}"
+    if platform == "babykingdom":
+        return f"https://www.baby-kingdom.com/forum.php?mod=viewthread&tid={thread_id}"
     raise ValueError(f"Unknown platform: {platform}")

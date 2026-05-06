@@ -40,10 +40,15 @@ Real thread URLs verified against the live agent's fetcher.
 **HKGolden** — agent uses the **mobile site** (`md.hkgolden.com/view.aspx?message=...&page=N`); the desktop `forum.hkgolden.com` is JS-rendered and effectively unscrapeable. Page counts on mobile differ from desktop because the mobile site fits more posts per page.
 - `https://md.hkgolden.com/view.aspx?message=5191089&page=1` — **8 mobile pages** (was 29 on desktop)
 
+**Baby Kingdom** — Discuz-based forum. Plain HTML, no SPA blocker. Both URL forms are accepted; agent normalises to `forum.php?mod=viewthread`.
+- `https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=662629` — single-page joke thread (verified)
+- Inputs in the rewrite form `https://www.baby-kingdom.com/thread-{tid}-{page}-1.html` are also accepted.
+
 URL pattern notes:
 - LIHKG: `https://lihkg.com/thread/{thread_id}/page/{N}` — used for both `source_ref` and the SPA URL the user pastes
 - HKGolden: `https://md.hkgolden.com/view.aspx?message={thread_id}&page={N}` — used for `source_ref` (matches what we actually fetch). Inputs in the form `https://forum.hkgolden.com/thread/{id}/page/{N}` are accepted and rewritten internally.
-- Strip `&page=N` (HKGolden) or `/page/N` (LIHKG) before storing into `source_threads.thread_url`.
+- Baby Kingdom: `https://www.baby-kingdom.com/forum.php?mod=viewthread&tid={thread_id}&page={N}` — canonical Discuz URL; rewrite form accepted on input.
+- Strip the `&page=N` (HKGolden, Baby Kingdom) or `/page/N` (LIHKG) segment before storing into `source_threads.thread_url`.
 
 ### Google Search Keyword Rotation Pool
 - `lihkg 笑話 site:lihkg.com`

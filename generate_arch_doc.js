@@ -213,6 +213,7 @@ const doc = new Document({
           ['LIHKG (JSON API)', 'https://lihkg.com/api_v2/thread/596076/page/1', '36'],
           ['LIHKG (JSON API)', 'https://lihkg.com/api_v2/thread/34189/page/1', '31'],
           ['HKGolden (mobile)', 'https://md.hkgolden.com/view.aspx?message=5191089&page=1', '8 (was 29 on desktop)'],
+          ['Baby Kingdom (Discuz)', 'https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=662629&page=1', '1'],
         ]
       ),
       spacer(),
@@ -220,6 +221,7 @@ const doc = new Document({
       bullet('LIHKG: source_ref stored as https://lihkg.com/thread/{id}/page/{N}; agent fetches via /api_v2/thread/{id}/page/{N} with X-LI-DEVICE: android header.'),
       bullet('HKGolden: source_ref stored as https://md.hkgolden.com/view.aspx?message={id}&page={N} (matches existing user data and what we actually fetch).'),
       bullet('Inputs like https://forum.hkgolden.com/thread/{id}/page/{N} are accepted and rewritten internally to the md.hkgolden.com form.'),
+      bullet('Baby Kingdom: source_ref stored as forum.php?mod=viewthread&tid={id}&page={N}; rewrite form thread-{id}-{page}-1.html accepted on input.'),
       bullet('Always strip the /page/{N} or &page={N} segment before storing into source_threads.thread_url.'),
       spacer(),
 

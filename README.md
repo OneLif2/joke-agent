@@ -27,6 +27,7 @@ mode** for review before any DB write.
 
 - **LIHKG** is fetched via the JSON `/api_v2` endpoint (the SPA HTML doesn't carry the posts).
 - **HKGolden** is fetched via `md.hkgolden.com` (the desktop site is JS-rendered).
+- **Baby Kingdom** is fetched via `forum.php?mod=viewthread&tid=...` (Discuz-based, plain HTML).
 - **Boundary detection** asks the LLM to identify self-contained jokes and skip reactions / commentary; output is verified to be a verbatim substring of the page text — anything the LLM rewrites is silently dropped.
 - **Tag classification** queries `tag_taxonomy` at runtime (never hardcoded) and validates returned tags against the registry.
 - **Atomic save** uses one DB transaction covering `jokes` INSERT, `joke_sources` INSERT, and `source_threads.reviewed_pages` bump; markdown files are appended only after COMMIT.
@@ -129,7 +130,7 @@ The `test` prompt waits for one of:
 | Flag | Effect |
 |---|---|
 | `--review` | Test mode (review-before-save) |
-| `--platform lihkg` / `--platform hkgolden` | Restrict auto-pick to one platform; ignored when `--url` is given |
+| `--platform lihkg` / `hkgolden` / `babykingdom` | Restrict auto-pick to one platform; ignored when `--url` is given |
 | `--no-cache` | Force a fresh forum fetch (bypasses 24h local cache) |
 | `--max-pages N` | Cap how many pages the pipeline crawls in one run (default 10) |
 | `--base-url <url>` | Override LLM bridge URL |
@@ -141,6 +142,9 @@ python3 -m joke_agent test --platform lihkg
 
 # only HKGolden
 python3 -m joke_agent test --platform hkgolden
+
+# only Baby Kingdom (Discuz-based)
+python3 -m joke_agent test --platform babykingdom
 
 # preview which thread the filter would pick first
 python3 -m joke_agent sources --platform lihkg
@@ -190,6 +194,7 @@ joke_agent_project/
         ├── base.py                 ← Post, ForumPage dataclasses
         ├── lihkg.py                ← LIHKG api_v2 JSON client
         ├── hkgolden.py             ← md.hkgolden.com HTML scraper
+        ├── babykingdom.py          ← Baby Kingdom (Discuz) HTML scraper
         └── router.py               ← URL → platform dispatch
 ```
 

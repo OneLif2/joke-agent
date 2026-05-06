@@ -21,6 +21,7 @@ SEED_THREADS = [
     ("lihkg", "https://lihkg.com/thread/596076"),
     ("lihkg", "https://lihkg.com/thread/34189"),
     ("hkgolden", "https://md.hkgolden.com/view.aspx?message=5191089"),
+    ("babykingdom", "https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=662629"),
 ]
 
 
@@ -57,7 +58,7 @@ def _row_to_pick(row: sqlite3.Row) -> Optional[ThreadPick]:
     )
 
 
-SUPPORTED_PLATFORMS = ("lihkg", "hkgolden")
+SUPPORTED_PLATFORMS = ("lihkg", "hkgolden", "babykingdom")
 
 
 def seed_defaults(conn: sqlite3.Connection, *, platform: Optional[str] = None) -> int:

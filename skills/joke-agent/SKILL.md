@@ -1,7 +1,7 @@
 ---
 name: joke-agent
-version: 0.1.0
-description: Cantonese / Traditional-Chinese joke fetching agent. Auto-picks a forum thread, extracts jokes via LLM, dedups, classifies tags, presents candidates for review, and atomically saves to jokes.db + markdown. Test mode (review-before-save) is the default safe path.
+version: 0.2.0
+description: Cantonese / Traditional-Chinese joke fetching agent. Auto-picks a forum thread (LIHKG, HKGolden, or Baby Kingdom), extracts jokes via LLM, dedups, classifies tags, presents candidates for review, and atomically saves to jokes.db + markdown. Test mode (review-before-save) is the default safe path.
 metadata:
   openclaw:
     emoji: "😆"
@@ -106,7 +106,7 @@ Pipeline:
 | Flag | Effect |
 |---|---|
 | `--review` | Force test mode |
-| `--platform lihkg` / `--platform hkgolden` | Restrict auto-pick to one platform |
+| `--platform lihkg` / `hkgolden` / `babykingdom` | Restrict auto-pick to one platform |
 | `--no-cache` | Bypass 24h fetch cache |
 | `--max-pages N` | Cap pages crawled in one run (default 10) |
 | `--base-url <url>` | Override LLM bridge URL |
@@ -137,6 +137,9 @@ Inputs to `--url` are normalised internally:
   `md.hkgolden.com/view_amp.aspx?...`
   → fetched via `md.hkgolden.com/view.aspx?message={id}&page={N}` (the
   desktop site is JS-rendered).
+- Baby Kingdom: `baby-kingdom.com/forum.php?mod=viewthread&tid={id}&page={N}`
+  or the rewrite form `baby-kingdom.com/thread-{id}-{page}-1.html`
+  → fetched via the canonical `forum.php` URL. Discuz-based, plain HTML.
 
 `source_ref` is stored as the canonical fetched URL.
 

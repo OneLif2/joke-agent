@@ -136,11 +136,7 @@ def gather(
 
 
 def _page_url(platform: str, thread_id: str, page_num: int) -> str:
-    if platform == "lihkg":
-        return f"https://lihkg.com/thread/{thread_id}/page/{page_num}"
-    if platform == "hkgolden":
-        return f"https://md.hkgolden.com/view.aspx?message={thread_id}&page={page_num}"
-    raise ValueError(f"Unknown platform: {platform}")
+    return forum_router.page_url(platform, thread_id, page_num)
 
 
 def advance_args(result: GatherResult, save_count: int) -> List[Tuple[str, str, int, Optional[int]]]:
